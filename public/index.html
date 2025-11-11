@@ -166,6 +166,63 @@
             margin: 8px 0;
         }
 
+        .api-box {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 15px;
+            background: white;
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+            margin-bottom: 10px;
+        }
+
+        .api-box-left {
+            border-right: 2px solid #e9ecef;
+            padding-right: 15px;
+        }
+
+        .api-box-left h3 {
+            color: #007bff;
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+
+        .api-box-left p {
+            color: #666;
+            font-size: 13px;
+        }
+
+        .api-box-right {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .api-box-right .api-key-text {
+            font-family: monospace;
+            font-size: 12px;
+            color: #333;
+            word-break: break-all;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 3px;
+            margin-bottom: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .api-box {
+                grid-template-columns: 1fr;
+            }
+            
+            .api-box-left {
+                border-right: none;
+                border-bottom: 2px solid #e9ecef;
+                padding-right: 0;
+                padding-bottom: 15px;
+            }
+        }
+
         .button-group {
             display: flex;
             gap: 8px;
@@ -180,6 +237,17 @@
 
         .copy-btn:hover {
             background: #138496;
+        }
+
+        .regenerate-btn {
+            background: #ffc107;
+            color: #000;
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+
+        .regenerate-btn:hover {
+            background: #e0a800;
         }
 
         .stats {
@@ -224,30 +292,12 @@
                 <label for="username">Username:</label>
                 <input type="text" id="username" placeholder="Masukkan username">
             </div>
+            <div class="form-group">
+                <label for="apiName">Nama API:</label>
+                <input type="text" id="apiName" placeholder="Contoh: Weather API, Payment API, dll">
+            </div>
             <button onclick="generateApiKey()">Generate Key</button>
             <div id="generateResult" class="result"></div>
-        </div>
-
-        <!-- Validate API Key -->
-        <div class="card">
-            <h2>Validate API Key</h2>
-            <div class="form-group">
-                <label for="validateKey">API Key:</label>
-                <input type="text" id="validateKey" placeholder="Masukkan API Key">
-            </div>
-            <button onclick="validateApiKey()" class="btn-secondary">Validate</button>
-            <div id="validateResult" class="result"></div>
-        </div>
-
-        <!-- Test Protected Endpoint -->
-        <div class="card">
-            <h2>Test Protected Endpoint</h2>
-            <div class="form-group">
-                <label for="testKey">API Key:</label>
-                <input type="text" id="testKey" placeholder="Masukkan API Key">
-            </div>
-            <button onclick="testProtectedEndpoint()" class="btn-success">Test Access</button>
-            <div id="testResult" class="result"></div>
         </div>
 
         <!-- List All Keys -->
@@ -267,10 +317,16 @@
         // Generate API Key
         async function generateApiKey() {
             const username = document.getElementById('username').value;
+            const apiName = document.getElementById('apiName').value;
             const resultDiv = document.getElementById('generateResult');
 
             if (!username) {
                 showResult(resultDiv, 'Username harus diisi!', 'error');
+                return;
+            }
+
+            if (!apiName) {
+                showResult(resultDiv, 'Nama API harus diisi!', 'error');
                 return;
             }
 
@@ -280,7 +336,7 @@
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ username })
+                    body: JSON.stringify({ username, apiName })
                 });
 
                 const data = await response.json();
@@ -289,16 +345,24 @@
                     resultDiv.innerHTML = `
                         <div class="api-key-display">
                             <strong>API Key Berhasil Dibuat!</strong><br>
-                            Username: ${data.username}<br>
-                            API Key: ${data.apiKey}<br>
-                            Dibuat: ${new Date(data.createdAt).toLocaleString('id-ID')}
-                            <button class="copy-btn" onclick="copyToClipboard('${data.apiKey}')">Copy</button>
+                            <strong>ID:</strong> ${data.apiId}<br>
+                            <strong>Username:</strong> ${data.username}<br>
+                            <strong>Nama API:</strong> ${data.apiName}<br>
+                            <strong>API Key:</strong> ${data.apiKey}<br>
+                            <strong>API Secret:</strong> ${data.apiSecret}<br>
+                            <strong>Dibuat:</strong> ${new Date(data.createdAt).toLocaleString('id-ID')}<br>
+                            <em style="color: #856404; background: #fff3cd; padding: 8px; display: block; margin-top: 8px; border-radius: 3px;">⚠️ ${data.note}</em>
+                            <div style="margin-top: 10px;">
+                                <button class="copy-btn" onclick="copyToClipboard('${data.apiKey}')">Copy Key</button>
+                                <button class="copy-btn" onclick="copyToClipboard('${data.apiSecret}')">Copy Secret</button>
+                            </div>
                         </div>
                     `;
                     resultDiv.className = 'result success';
                     resultDiv.style.display = 'block';
                     
                     document.getElementById('username').value = '';
+                    document.getElementById('apiName').value = '';
                     loadApiKeys();
                 } else {
                     showResult(resultDiv, data.message, 'error');
@@ -400,15 +464,22 @@
                     }
 
                     keysListDiv.innerHTML = data.keys.map(key => `
-                        <div class="key-item">
-                            <p><strong>Username:</strong> ${key.username}</p>
-                            <p><strong>API Key:</strong></p>
-                            <p class="api-key-text">${key.apiKey}</p>
-                            <p><strong>Dibuat:</strong> ${new Date(key.createdAt).toLocaleString('id-ID')}</p>
-                            ${key.lastUsed ? `<p><strong>Terakhir digunakan:</strong> ${new Date(key.lastUsed).toLocaleString('id-ID')}</p>` : '<p>Belum pernah digunakan</p>'}
-                            <div class="button-group">
-                                <button class="copy-btn" onclick="copyToClipboard('${key.apiKey}')">Copy</button>
-                                <button class="btn-danger" onclick="deleteApiKey('${key.apiKey}')">Delete</button>
+                        <div class="api-box">
+                            <div class="api-box-left">
+                                <h3>${key.apiName}</h3>
+                                <p><strong>ID:</strong> ${key.id || 'N/A'}</p>
+                                <p><strong>Username:</strong> ${key.username}</p>
+                                <p><strong>Dibuat:</strong> ${new Date(key.createdAt).toLocaleString('id-ID')}</p>
+                                ${key.lastUsed ? `<p><strong>Terakhir digunakan:</strong> ${new Date(key.lastUsed).toLocaleString('id-ID')}</p>` : '<p>Belum pernah digunakan</p>'}
+                            </div>
+                            <div class="api-box-right">
+                                <p class="api-key-text">${key.apiKey}</p>
+                                <p style="font-size: 11px; color: #666; margin-bottom: 5px;">Hash: ${key.hash ? key.hash.substring(0, 16) + '...' : 'N/A'}</p>
+                                <div class="button-group">
+                                    <button class="copy-btn" onclick="copyToClipboard('${key.apiKey}')">Copy</button>
+                                    <button class="regenerate-btn" onclick="regenerateApiKey('${key.apiKey}')">Regenerate</button>
+                                    <button class="btn-danger" onclick="deleteApiKey('${key.apiKey}')">Delete</button>
+                                </div>
                             </div>
                         </div>
                     `).join('');
@@ -437,6 +508,47 @@
 
                 if (data.success) {
                     alert('API Key berhasil dihapus!');
+                    loadApiKeys();
+                } else {
+                    alert(data.message);
+                }
+            } catch (error) {
+                alert('Terjadi kesalahan: ' + error.message);
+            }
+        }
+
+        // Regenerate API Key
+        async function regenerateApiKey(oldApiKey) {
+            if (!confirm('Generate API Key baru? Key lama akan diganti tetapi Nama API tetap sama.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/regenerate-key', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ oldApiKey })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const message = `API Key berhasil di-regenerate!\n\n` +
+                                  `Key Baru: ${data.newApiKey.substring(0, 20)}...\n` +
+                                  `Secret Baru: ${data.newApiSecret.substring(0, 20)}...\n\n` +
+                                  `${data.note}`;
+                    alert(message);
+                    
+                    // Tampilkan info lengkap di console
+                    console.log('=== REGENERATED API KEY ===');
+                    console.log('Old Key:', data.oldApiKey);
+                    console.log('New Key:', data.newApiKey);
+                    console.log('New Secret:', data.newApiSecret);
+                    console.log('API Name:', data.apiName);
+                    console.log('==========================');
+                    
                     loadApiKeys();
                 } else {
                     alert(data.message);
