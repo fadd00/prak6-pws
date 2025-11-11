@@ -36,30 +36,22 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
-// In-memory storage tidak digunakan lagi (sudah pakai database)
-// let apiKeys = new Map();
-
-// Generate API Key menggunakan crypto
 function generateApiKey() {
     return crypto.randomBytes(32).toString('hex');
 }
 
-// Generate API Secret (untuk keamanan tambahan)
 function generateApiSecret() {
     return crypto.randomBytes(64).toString('base64');
 }
 
-// Hash API Key untuk validasi
 function hashApiKey(apiKey) {
     return crypto.createHash('sha256').update(apiKey).digest('hex');
 }
 
-// Generate random ID
 function generateId() {
     return crypto.randomUUID();
 }
 
-// Endpoint untuk generate API key baru
 app.post('/api/generate-key', async (req, res) => {
     const { username, apiName } = req.body;
     
